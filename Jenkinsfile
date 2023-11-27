@@ -19,6 +19,11 @@ pipeline {
                         ])
             }
         }
+        stage('Version'){
+            steps {
+                sh 'node --version'
+            }
+        }
         stage('SonarQube Analysis') {
             steps {
                 script{
