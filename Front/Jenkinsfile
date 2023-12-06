@@ -1,4 +1,6 @@
 def projectName = "TestFront"
+def dockerImageName = "web-axity-holamundo-angular"
+def dockerContainerName = "firtsAppDocker"
 
 pipeline {
     agent any
@@ -25,6 +27,20 @@ pipeline {
                             -Dsonar.projectKey=${projectName} \
                             -Dsonar.projectName=${projectName}"
                         }
+                }
+            }
+        }
+        stage('Docker Build'){
+            steps{
+                script{
+                    sh "docker build -t ${dockerImageName} ."
+                }
+            }
+        }
+        stage('Docker run'){
+            steps{
+                script{
+                    sh "docker container run --name ${dockerContainerName} -dp 83:80 ${dockerImageName}"
                 }
             }
         }
