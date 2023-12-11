@@ -33,6 +33,7 @@ pipeline {
         stage('Docker Build'){
             steps{
                 script{
+                    sh "pwd"
                     sh "docker build -t ${dockerImageName} ."
                 }
             }
