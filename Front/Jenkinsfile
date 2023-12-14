@@ -1,6 +1,7 @@
 def projectName = "TestFront"
 def dockerImageName = "web-axity-holamundo-angular"
 def dockerContainerName = "firtsAppDocker"
+def NEXUS_DOCKER_REPO = "http://localhost:8084/repository/devOps-Docker/"
 
 pipeline {
     agent any
@@ -42,6 +43,29 @@ pipeline {
             steps{
                 script{
                     sh "docker container run --name ${dockerContainerName} -dp 83:80 ${dockerImageName}"
+                }
+            }
+        }
+        stage('Nexus login'){
+            steps{
+                script{
+                    withCredentials([usernamePassword(credentialsId: 'Nexus-Credentials', usernameVariable: 'USER', passwordVariable: 'PASS' )]){
+                        sh ' echo $PASS | docker login -u $USER --password-stdin ${NEXUS_DOCKER_REPO}'
+                    } 
+                }
+            }
+        }
+        stage('Docker Tag'){
+            steps{
+                script{
+                    sh 'docker tag ${dockerImageName}:latest ${NEXUS_DOCKER_REPO}'
+                }
+            }
+        }
+        stage('Docker push'){
+            steps{
+                script{
+                    sh 'docker push ${NEXUS_DOCKER_REPO}'
                 }
             }
         }
