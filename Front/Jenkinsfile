@@ -59,7 +59,7 @@ pipeline {
         stage('Docker Tag'){
             steps{
                 script{
-                    sh "docker tag ${dockerImageName}:latest ${NEXUS_DOCKER_REPO}/repository/DockerDevOps:1.0.0"
+                    sh "docker tag ${dockerImageName}:latest ${NEXUS_DOCKER_REPO}/repository/dockerdevops:1.0.0"
                 }
             }
         }
