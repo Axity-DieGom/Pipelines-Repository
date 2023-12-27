@@ -1,0 +1,119 @@
+def TerraformInit(path){
+    dir("$path"){
+        sh "terraform init"
+    }
+}
+def TerraformPlan(path, plan_name){
+    dir("$path"){
+        sh "terraform plan -out=tf_${plan_name}.plan"
+        sh "terraform show -no-color tf_${plan_name}.plan > tfplan_${plan_name}.txt"
+    }
+}
+def TerraformApply(path, plan_name){
+    dir("$path"){
+        sh "terraform apply -auto-approve ${plan_name}"
+    }
+}
+pipeline {
+    agent any
+    parameters {
+        string(defaultValue: '', name: 'TAG', description: 'Write Tag to deploy')
+        choice(name: 'PROFILE', choices:["dev","stg","prd"], description: 'choose profile Environtment')
+        string(defaultValue: '', name: 'ACCESS_KEY_ID', description: 'Write access key')
+        string(defaultValue: '', name: 'SECRET_ACCESS_KEY', description: 'Write secret key')
+        string(defaultValue: '', name: 'AWS_REGION', description: 'Write credentials region')
+    }
+    stages {
+        stage("Checkout from GitHub"){
+            when {
+                expression {
+                    return params.TAG
+                }
+            }
+            steps{
+				cleanWs()
+                echo "=================================="
+                echo "========Cloning Repository========"
+                echo "=================================="
+				sh 'printenv'
+                checkout([$class: 'GitSCM',
+                          branches: [[name: "${TAG}"]],
+                          doGenerateSubmoduleConfigurations: false,
+                          extensions: [],
+                          gitTool: 'Default',
+                          submoduleCfg: [],
+                          userRemoteConfigs: [[credentialsId: 'Git-SSH-Credentials', url: "git@github.com:Axity-DieGom/Iac-Axity-Containers.git"]]
+                        ])
+ 
+            }
+        }
+        stage('set profile') {
+            steps {
+                sh 'printenv'
+                sh 'aws configure --profile ${PROFILE} set aws_access_key_id ${ACCESS_KEY_ID}'
+                sh 'aws configure --profile ${PROFILE} set aws_secret_access_key ${SECRET_ACCESS_KEY}'
+                sh 'aws configure --profile ${PROFILE} set default.region ${AWS_REGION}'
+                sh 'aws configure --profile ${PROFILE} set default.output json'
+            }
+        }
+        stage('validate profile') {
+            steps {
+                sh 'aws configure list-profiles'
+           }
+        }
+        stage("Init infrastructure"){
+            steps{
+                echo "==========================================="
+                echo "=========Deploying Infrastructure=========="
+                echo "==========================================="
+                dir("$WORKSPACE"){
+                    echo "Deploying infrastructure"
+                    TerraformInit("$WORKSPACE")
+                }
+            }
+        }
+         stage("Plan infrastructure"){
+            steps{
+                echo "==========================================="
+                echo "=========Deploying Infrastructure=========="
+                echo "==========================================="
+                dir("$WORKSPACE"){
+                    TerraformPlan("$WORKSPACE", "infraestructure")
+                }
+            }
+        }
+        stage('Approval infrastructure') {
+            steps {
+                script {
+                   def plan = readFile(file: "$WORKSPACE/tfplan_infrastructure.txt")
+                    env.CHOICE_INFRA = input message: "Do you want to apply the plan?",
+                        parameters: [choice(name: 'CHOICE_INFRA', choices: [false, true], description: plan)]
+                }
+            }
+        }
+        stage('Deploy Infrastructure') {
+            when {
+                expression {
+                    return env.CHOICE_INFRA
+                }
+            }
+            steps {
+                script {
+                    TerraformApply("$WORKSPACE","tf_infrastructure.plan")
+                }
+            }
+        }
+    }
+    post{
+        always {
+            echo "========Clear executions========"
+            deleteDir()
+        }
+        success{
+            echo "========pipeline executed successfully ========"
+        }
+        failure{
+            echo "========pipeline execution failed========"
+        }
+    }
+}
