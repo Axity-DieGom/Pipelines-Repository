@@ -78,7 +78,7 @@ pipeline {
                 echo "=========Deploying Infrastructure=========="
                 echo "==========================================="
                 dir("$WORKSPACE"){
-                    TerraformPlan("$WORKSPACE", "infraestructure")
+                    TerraformPlan("$WORKSPACE", "infrastructure")
                 }
             }
         }
